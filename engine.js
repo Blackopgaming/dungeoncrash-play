@@ -8,7 +8,7 @@
                 E:{name:"Wraith",hp:3,dmg:3,prec:0.66,col:"#8fa0c0"},
                 B:{name:"Boss",hp:7,dmg:6,prec:0.60,col:"#c23644"} };
   const HERO0={hp:10,maxhp:10,dmg:1,prec:0.82};
-  const RIP_BASE=0.050,RIP_RAMP=0.030,DODGE=0.25,DEFLECT=0.20,MAXX=60,HEAL_AMT=5,POT_MAX=5;
+  const RIP_BASE=0.070,RIP_RAMP=0.120,DODGE=0.25,DEFLECT=0.20,MAXX=60,HEAL_AMT=5,POT_MAX=5;
   const ITEMS={ weapon:{icon:"🪓",name:"War Axe"},shield:{icon:"🛡️",name:"Tower Shield"},armour:{icon:"🥋",name:"Deflection Plate"},
     ring:{icon:"💍",name:"Ring of Power"},amulet:{icon:"📿",name:"Amulet of Dodging"},potion:{icon:"⚗️",name:"Potion"} };
   const ITEM_RARITY={weapon:"uncommon",shield:"rare",armour:"epic",ring:"rare",amulet:"epic",potion:"rare"};
@@ -58,12 +58,14 @@
       if(sw>80)return{win:true,hp,log}; } }
   function newGear(){return{weapon:false,shield:false,armour:false,ring:false,amulet:false,potions:0};}
   function simulate(rng){const g=newGear();let hp=HERO0.hp;const beats=[];let cleared=0,outcome=null,artDepth=0;
-    for(let d=0;d<ORDER.length;d++){ const chest=chestRoll(rng,g);
+    for(let d=0;d<ORDER.length;d++){
+      // the Ripper closes in DURING the descent — every depth carries real risk (this is what makes the ride climb)
+      const pc=Math.max(0,RIP_BASE+RIP_RAMP*d); if(rng()<pc){outcome="ripper";beats.push({depth:d+1,travelDeath:true});break;}
+      const chest=chestRoll(rng,g);
       if(chest.kind==="artefact"){outcome="artefact";artDepth=d+1;beats.push({depth:d+1,chest,gear:{...g},hp});break;}
       if(chest.kind==="upgrade")g[chest.item]=true; else if(chest.kind==="heal"){g.potions++;hp=Math.min(HERO0.maxhp,hp+HEAL_AMT);}
       const type=ORDER[d];const res=fight(rng,hp,g,type);const beat={depth:d+1,type,chest,win:res.win,hpBefore:hp,hpAfter:res.hp,gear:{...g},log:res.log};hp=res.hp;
-      if(!res.win){outcome="combat";beats.push(beat);break;} cleared++;
-      const pc=Math.max(0,RIP_BASE+RIP_RAMP*d); if(rng()<pc){outcome="ripper";beat.ripper=true;beats.push(beat);break;} beats.push(beat); }
+      if(!res.win){outcome="combat";beats.push(beat);break;} cleared++; beats.push(beat); }
     if(!outcome)outcome="escape"; return{beats,cleared,outcome,gotArtefact:outcome==="artefact",artDepth}; }
 
   let LADDER=[],P_REACH=[],PART=0;
@@ -104,7 +106,10 @@
     async _play(){
       const self=this,run=this._run,s=this.state,g=newGear();let clearedMult=1;
       for(const b of run.beats){ s.depth=b.depth;
-        s.phase="travel";s.enemy=null;s.chestOpen=false;s.stateText="DESCENDING…";self._emit("travel",{depth:b.depth});await sleep(900);
+        s.phase="travel";s.enemy=null;s.chestOpen=false;s.stateText="DESCENDING…";
+        s.ripper=Math.min(0.9,(b.depth-1)*0.3+0.12);
+        self._emit("travel",{depth:b.depth});await sleep(950);
+        if(b.travelDeath){ s.ripper=1;s.stateText="THE RIPPER CAUGHT YOU"; return self._end("ripper",clearedMult); }
         s.phase="bet";s.enemy=null;s.gear={...g};s.chestOptions=this._optsFor(g);this._chestPick=null;
         const cb=Math.max(1,Math.round(s.bet*0.25));s.chestBetAmt=cb;
         this._emit("chestwindow",{depth:b.depth,options:s.chestOptions,chestBet:cb});
