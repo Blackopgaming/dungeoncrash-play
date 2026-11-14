@@ -13,7 +13,9 @@
   .app{width:100%;max-width:480px;padding:12px;display:flex;flex-direction:column;gap:11px}
   .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
   .brand{font-size:12px;letter-spacing:0;color:var(--ink)}.brand b{color:var(--blood)}
+  .multwrap{display:flex;flex-direction:column;align-items:center;line-height:1}
   .mult{font-size:27px;font-variant-numeric:tabular-nums;color:#e8e0cc}.mult.win{color:var(--unc)}.mult.die{color:var(--blood)}
+  .total{font-family:'Press Start 2P',monospace;font-size:9px;color:var(--leg);margin-top:4px;min-height:9px;letter-spacing:.04em}
   .bal{text-align:right;font-size:14px;color:var(--mut);letter-spacing:.1em;line-height:1}.bal b{display:block;font-size:20px;color:var(--gold)}
   /* STAGE */
   .stage{position:relative;height:280px;border:2px solid var(--line);border-radius:8px;overflow:hidden;background:#07050b;box-shadow:inset 0 0 60px #000}
@@ -112,7 +114,7 @@
   .tag{text-align:center;font-family:'Press Start 2P',monospace;font-size:8px;color:#342c40;letter-spacing:.06em}
 </style></head>
 <body><div class="app">
-  <div class="top"><div class="brand px">DUNGEON<b>CRASH</b></div><div class="mult" id="mult">1.00×</div><div class="bal"><span>BAL</span><b id="bal">—</b></div></div>
+  <div class="top"><div class="brand px">DUNGEON<b>CRASH</b></div><div class="multwrap"><div class="mult" id="mult">1.00×</div><div class="total" id="total"></div></div><div class="bal"><span>BAL</span><b id="bal">—</b></div></div>
   <div class="stage" id="stage">
     <div class="bg" id="bg"></div><div class="floor"></div><div class="vign"></div>
     <div class="topinfo"><span id="depth">DEPTH 0/9</span><span id="statetext">LOADING…</span></div>
@@ -244,6 +246,8 @@
  function frame(){const st=ST();
    bgx-=st.phase==="travel"?3:0.4;$("bg").style.backgroundPositionX=bgx+"px";
    if(st.phase!=="end"){const m=$("mult");m.className="mult"+(st.cashed?" win":"");m.textContent=fx(st.mult);}
+   {const pnl=st.chestPnL||0, inRun=(st.phase==="travel"||st.phase==="bet"||st.phase==="open"||st.phase==="fight");
+    $("total").textContent=(inRun&&pnl!==0&&st.bet>0)?("TOTAL "+fx(Math.max(0,st.mult+pnl/st.bet))):"";}
    $("depth").textContent="DEPTH "+st.depth+"/"+DC.ORDER.length;$("statetext").textContent=st.stateText||"";
    {const rk=st.ripper, bar=rk*100;$("rippct").textContent=(rk*100|0)+"%";$("ripbar").style.width=bar+"%";$("ripskull").style.left=bar+"%";$("ripwrap").classList.toggle("danger",rk>0.18);}
    const hf=st.hp/DC.maxHp;$("heroHp").firstElementChild.style.width=(hf*100)+"%";$("heroHp").classList.toggle("lo",hf<=0.35);

@@ -3,13 +3,13 @@
 (function(global){
   "use strict";
   const RTP=0.96;
-  const ORDER=["R","R","E","R","E","R","E","E","R","E","E","E","R","E","B"]; // 15 encounters, 1 BOSS finale; Ripper builds over the long descent
+  const ORDER=["R","R","E","R","E","R","E","R","E","E","R","E","E","R","E","E","E","E","E","B"]; // 20 encounters, 1 BOSS finale
   const ENEMY={ R:{name:"Grub",hp:2,dmg:2,prec:0.70,col:"#7fae58"},
                 E:{name:"Wraith",hp:3,dmg:3,prec:0.66,col:"#8fa0c0"},
                 B:{name:"Boss",hp:7,dmg:6,prec:0.60,col:"#c23644"} };
   const HERO0={hp:10,maxhp:10,dmg:1,prec:0.82};
-  // Reaper strike risk per descent, shown HONESTLY on the bar and rising as you go deeper (a visible, informed gamble).
-  const RIP_BASE=0.020,RIP_RAMP=0.022,MAXX=100,HEAL_AMT=5,POT_MAX=5;
+  // Reaper can't touch you for the first RIP_FREE events; after that the strike risk ramps up each descent (shown honestly).
+  const RIP_FREE=10,RIP_RAMP=0.060,MAXX=250,HEAL_AMT=5,POT_MAX=5;
   // defense: BLOCK (parry) 20% base, +20% with shield = 40%. DODGE 20% base, +20% with Ring of Dodging = 40%.
   const DODGE_BASE=0.20,DODGE_RING=0.20,BLOCK_BASE=0.20,BLOCK_SHIELD=0.20;
   const ITEMS={ weapon:{icon:"🪓",name:"War Axe"},shield:{icon:"🛡️",name:"Tower Shield"},
@@ -60,7 +60,7 @@
   function newGear(){return{weapon:false,shield:false,ringdodge:false,potions:0};}
   function simulate(rng){const g=newGear();let hp=HERO0.hp;const beats=[];let cleared=0,outcome=null,artDepth=0;
     for(let d=0;d<ORDER.length;d++){
-      const h=Math.max(0,RIP_BASE+RIP_RAMP*d);      // Reaper strike risk THIS descent (shown on the bar, rises with depth)
+      const h = d<RIP_FREE ? 0 : Math.min(0.95, RIP_RAMP*(d-RIP_FREE+1));  // 0 for first 10 events, then ramps
       if(rng()<h){outcome="ripper";beats.push({depth:d+1,travelDeath:true,rip:h});break;}
       const chest=chestRoll(rng,g);
       if(chest.kind==="artefact"){outcome="artefact";artDepth=d+1;beats.push({depth:d+1,chest,gear:{...g},hp,rip:h});break;}
@@ -86,13 +86,13 @@
   const E={
     RTP,ORDER,ENEMY,ITEMS,RARITY,HEAL:HEAL_AMT,maxHp:HERO0.maxhp,fmtx,beep,LADDER,P_REACH,PART,
     balance:(()=>{try{const v=JSON.parse(localStorage.getItem(LS));return(typeof v==="number"&&v>=0)?v:5000;}catch(e){return 5000;}})(),
-    state:{phase:"idle",runNo:1,depth:0,mult:1,cashed:false,cashMult:0,bet:0,gear:newGear(),hp:HERO0.maxhp,
+    state:{phase:"idle",runNo:1,depth:0,mult:1,cashed:false,cashMult:0,bet:0,chestPnL:0,gear:newGear(),hp:HERO0.maxhp,
       enemy:null,enemyName:"",enemyHp:0,enemyMaxHp:1,enemyHpFrac:1,chestOpen:false,ripper:0,chestCountdown:0,chestOptions:[],stateText:"",chestBetAmt:0},
     _on:{}, on(ev,fn){(this._on[ev]=this._on[ev]||[]).push(fn);}, _emit(ev,d){(this._on[ev]||[]).forEach(f=>f(d));},
     _save(){try{localStorage.setItem(LS,JSON.stringify(this.balance));}catch(e){} this._emit("balance",this.balance);},
     calibrate,measureRTP,chestProbs,lootOf,
     _run:null,_chestPick:null,
-    reset(){const s=this.state;s.phase="idle";s.cashed=false;s.cashMult=0;s.depth=0;s.mult=1;s.enemy=null;s.ripper=0;
+    reset(){const s=this.state;s.phase="idle";s.cashed=false;s.cashMult=0;s.depth=0;s.mult=1;s.chestPnL=0;s.enemy=null;s.ripper=0;
       s.gear=newGear();s.hp=HERO0.maxhp;s.stateText="PLACE YOUR STAKE";
       this._run=simulate(mulberry32(cyrb("dc4-"+s.runNo)));this._chestPick=null;
       s.chestOptions=this._optsFor(s.gear);this._emit("idle");},
@@ -100,7 +100,7 @@
       .map(([k,lab,pr])=>({k,lab,prob:pr,odds:pr>0?RTP/pr:0}));},
     pickChest(k){this._chestPick=k;},
     start(stake){const s=this.state;if(s.phase!=="idle")return;stake=Math.floor(stake);if(stake<1||stake>this.balance)return;
-      s.bet=stake;this.balance-=stake;this._save();s.phase="bet";s.cashed=false;s.mult=1;beep(300,.08,"sawtooth");this._play();},
+      s.bet=stake;s.chestPnL=0;this.balance-=stake;this._save();s.phase="bet";s.cashed=false;s.mult=1;beep(300,.08,"sawtooth");this._play();},
     cashOut(){const s=this.state;if(s.cashed||(s.phase!=="fight"&&s.phase!=="bet"&&s.phase!=="open"))return;
       s.cashed=true;s.cashMult=s.mult;const win=s.bet*s.cashMult;this.balance+=win;this._save();
       beep(880,.1);setTimeout(()=>beep(1180,.1),70);this._emit("cash",{mult:s.cashMult,win});},
@@ -126,7 +126,7 @@
         this._emit("reveal",{icon:loot.icon,name:loot.name,rar:loot.rar,label:R.lab,color:R.col,wow:R.wow,depth:b.depth,kind:b.chest.kind,item:b.chest.item});
         let betRes=null;
         if(cbStake){ const opt=s.chestOptions.find(o=>o.k===this._chestPick); const won=this._chestPick===b.chest.kind;
-          if(won){const pay=Math.round(cbStake*(opt?opt.odds:1.5));this.balance+=pay;this._save();betRes={won:true,amount:pay};setTimeout(()=>beep(1040,.1),120);} else betRes={won:false,amount:cbStake}; }
+          if(won){const pay=Math.round(cbStake*(opt?opt.odds:1.5));this.balance+=pay;this._save();betRes={won:true,amount:pay};s.chestPnL+=pay-cbStake;setTimeout(()=>beep(1040,.1),120);} else {betRes={won:false,amount:cbStake};s.chestPnL-=cbStake;} }
         this._emit("loot",{icon:loot.icon,name:loot.name,rar:loot.rar,label:R.lab,color:R.col,depth:b.depth,bet:betRes,kind:b.chest.kind,item:b.chest.item});
         await sleep(R.wow>=3?2500:R.wow>=2?1500:1000);
         if(b.chest.kind==="artefact")return this._end("artefact",clearedMult);
