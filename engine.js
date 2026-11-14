@@ -3,12 +3,12 @@
 (function(global){
   "use strict";
   const RTP=0.96;
-  const ORDER=["R","E","B"];                       // one of each: GRUB, WRAITH, BOSS
+  const ORDER=["R","R","E","R","E","R","E","E","R","E","E","E","R","E","B"]; // 15 encounters, 1 BOSS finale; Ripper builds over the long descent
   const ENEMY={ R:{name:"Grub",hp:2,dmg:2,prec:0.70,col:"#7fae58"},
                 E:{name:"Wraith",hp:3,dmg:3,prec:0.66,col:"#8fa0c0"},
                 B:{name:"Boss",hp:7,dmg:6,prec:0.60,col:"#c23644"} };
   const HERO0={hp:10,maxhp:10,dmg:1,prec:0.82};
-  const RIP_BASE=0.070,RIP_RAMP=0.120,MAXX=60,HEAL_AMT=5,POT_MAX=5;
+  const RIP_BASE=0.020,RIP_RAMP=0.022,MAXX=120,HEAL_AMT=5,POT_MAX=5;
   // defense: BLOCK (parry) 20% base, +20% with shield = 40%. DODGE 20% base, +20% with Ring of Dodging = 40%.
   const DODGE_BASE=0.20,DODGE_RING=0.20,BLOCK_BASE=0.20,BLOCK_SHIELD=0.20;
   const ITEMS={ weapon:{icon:"🪓",name:"War Axe"},shield:{icon:"🛡️",name:"Tower Shield"},
@@ -25,7 +25,7 @@
   // artefact: extremely rare. weapon->shield->armour: common but each rarer (all 3 ~ artefact-rare).
   // potions: like gear, each one rarer, 5 total. ring/amulet: rare, -50% once one looted.
   function chestOdds(g){
-    const o={artefact:0.007};
+    const o={artefact:0.004};   // extremely rare jackpot (15 chests/run ⇒ ~2.6%/run)
     // gear ladder, each rarer than the last: Axe -> Shield -> Ring of Dodging
     if(!g.weapon) o.weapon=0.42; else if(!g.shield) o.shield=0.22; else if(!g.ringdodge) o.ringdodge=0.12;
     const PT=[0.34,0.22,0.13,0.07,0.04]; if(g.potions<POT_MAX) o.potion=PT[g.potions];
@@ -107,7 +107,7 @@
       const self=this,run=this._run,s=this.state,g=newGear();let clearedMult=1;
       for(const b of run.beats){ s.depth=b.depth;
         s.phase="travel";s.enemy=null;s.chestOpen=false;s.stateText="DESCENDING…";
-        s.ripper=Math.min(0.9,(b.depth-1)*0.3+0.12);
+        s.ripper=Math.min(0.96,(b.depth-1)/ORDER.length+0.05);
         self._emit("travel",{depth:b.depth});await sleep(950);
         if(b.travelDeath){ s.ripper=1;s.stateText="THE RIPPER CAUGHT YOU"; return self._end("ripper",clearedMult); }
         s.phase="bet";s.enemy=null;s.gear={...g};s.chestOptions=this._optsFor(g);this._chestPick=null;

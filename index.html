@@ -43,6 +43,10 @@
   @keyframes dfl{0%{filter:brightness(2.7) drop-shadow(0 0 14px #46d6ff)}100%{filter:none}}
   .defring{position:absolute;pointer-events:none;z-index:8;border-radius:50%;animation:defr .45s ease-out forwards}
   @keyframes defr{0%{opacity:.9;transform:translate(-50%,-50%) scale(.3)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.9)}}
+  .betflash{position:absolute;font-family:'Press Start 2P',monospace;font-size:11px;transform:translate(-50%,-50%);pointer-events:none;z-index:9;text-shadow:2px 2px 0 #000;animation:betf 1.4s ease-out forwards;white-space:nowrap}
+  .betflash.won{color:#4be08a;filter:drop-shadow(0 0 10px #4be08a)}
+  .betflash.lost{color:#8a94a2}
+  @keyframes betf{0%{transform:translate(-50%,-25%) scale(.4);opacity:0}20%{transform:translate(-50%,-70%) scale(1.2);opacity:1}100%{transform:translate(-50%,-125%) scale(1);opacity:0}}
   .actor{position:absolute;bottom:42px;display:flex;flex-direction:column;align-items:center;gap:5px;transition:transform .07s}
   .actor.hero{left:11%}.actor.mob{right:11%}
   .sprite{image-rendering:pixelated;filter:drop-shadow(0 4px 3px rgba(0,0,0,.7))}
@@ -216,7 +220,12 @@
  DC.on("loot",e=>{const f=$("feed");const r=document.createElement("div");r.className="r";
    const ic=document.createElement("canvas");px(ic,lootSprite(e.kind,e.item),3);r.appendChild(ic);
    r.insertAdjacentHTML("beforeend"," "+e.name+' <span class="rr" style="color:'+e.color+'">'+e.label+'</span><span class="d">d'+e.depth+'</span>'+(e.bet?'<span class="bt '+(e.bet.won?"w":"l")+'">'+(e.bet.won?"+":"−")+Math.round(e.bet.amount)+'</span>':''));
-   f.prepend(r);while(f.children.length>11)f.lastChild.remove();});
+   f.prepend(r);while(f.children.length>11)f.lastChild.remove();
+   if(e.bet){const chest=$("chest"),cr=chest.getBoundingClientRect(),sr=$("stage").getBoundingClientRect();
+     const fl=document.createElement("div");fl.className="betflash "+(e.bet.won?"won":"lost");
+     fl.textContent=(e.bet.won?"CHEST BET WON +":"CHEST BET −")+Math.round(e.bet.amount);
+     fl.style.left=(cr.left-sr.left+cr.width/2)+"px";fl.style.top=(cr.top-sr.top-42)+"px";$("flarelayer").appendChild(fl);setTimeout(()=>fl.remove(),1400);
+     if(e.bet.won){DC.beep(760,.08);setTimeout(()=>DC.beep(1140,.1),80);}}});
  DC.on("end",r=>{if(r.outcome==="combat"||r.outcome==="ripper")px($("heroC"),LOOT.empty,7);});
  // render loop
  let bgx=0;
