@@ -109,7 +109,6 @@
     <div class="chest" id="chest" style="display:none"><div class="glow" id="chestGlow"></div><div class="lid"></div><div class="box"></div><div class="band"></div><div class="lock"></div></div>
     <div class="dmglayer" id="dmglayer"></div><div class="flarelayer" id="flarelayer"></div>
     <div class="announce" id="announce"><div class="big" id="annbig"></div><div class="cd" id="anncd"></div></div>
-    <div class="jackteaser"><span class="d">💎</span> ARTEFACT = JACKPOT</div>
   </div>
   <div class="controls">
     <div class="stakebar"><input id="stake" type="number" value="100" min="1"><div class="q"><b data-op="x2">2×</b><b data-op="half">½</b><b data-op="max">MAX</b></div></div>
@@ -184,15 +183,8 @@
  DC.on("idle",()=>drawHero(ST().gear));
  DC.on("betsopen",()=>{const a=$("announce");a.className="announce show open";$("annbig").textContent="CHEST BETS OPEN!";DC.beep(300,.06);setTimeout(()=>DC.beep(420,.08),90);});
  DC.on("betsclosed",()=>{const a=$("announce");a.className="announce show closed";$("annbig").textContent="BETS CLOSED";$("anncd").textContent="";DC.beep(200,.14,"sawtooth");setTimeout(()=>{if($("announce").classList.contains("closed"))$("announce").classList.remove("show");},700);});
- DC.on("open",()=>{$("chest").classList.add("open");$("chestGlow").style.background="#c8a030";DC.beep(360,.07);
-   // gold suspense shimmer — every chest teases the artefact before it lands on something else
-   const chest=$("chest"),cr=chest.getBoundingClientRect(),sr=$("stage").getBoundingClientRect();
-   const su=document.createElement("div");su.className="suspense";su.id="suspenseEl";
-   su.style.left=(cr.left-sr.left+cr.width/2)+"px";su.style.top=(cr.top-sr.top-12)+"px";
-   su.innerHTML='<div class="sp">💎</div><div class="st">ARTEFACT?!</div>';$("flarelayer").appendChild(su);
-   DC.beep(500,.05);setTimeout(()=>DC.beep(640,.05),150);setTimeout(()=>DC.beep(770,.05),300);});
+ DC.on("open",()=>{$("chest").classList.add("open");DC.beep(360,.07);});
  DC.on("reveal",l=>{
-   const su=$("suspenseEl");if(su)su.remove();
    if(l.kind==="upgrade"){ drawHero(ST().gear); const hh=$("hero");hh.classList.remove("equip");void hh.offsetWidth;hh.classList.add("equip");
      const hr=$("hero").getBoundingClientRect(),s2=$("stage").getBoundingClientRect();const lb=document.createElement("div");lb.className="equiplabel";lb.textContent="▲ "+l.name.toUpperCase();lb.style.left=(hr.left-s2.left-8)+"px";lb.style.top=(hr.top-s2.top-10)+"px";$("dmglayer").appendChild(lb);setTimeout(()=>lb.remove(),1200);DC.beep(680,.08);setTimeout(()=>DC.beep(1020,.1),90);}
    const chest=$("chest"),cr=chest.getBoundingClientRect(),sr=$("stage").getBoundingClientRect();
