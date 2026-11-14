@@ -47,6 +47,13 @@
   .betflash.won{color:#4be08a;filter:drop-shadow(0 0 10px #4be08a)}
   .betflash.lost{color:#8a94a2}
   @keyframes betf{0%{transform:translate(-50%,-25%) scale(.4);opacity:0}20%{transform:translate(-50%,-70%) scale(1.2);opacity:1}100%{transform:translate(-50%,-125%) scale(1);opacity:0}}
+  .ripperdeath{position:absolute;inset:0;pointer-events:none;z-index:10;display:none;overflow:hidden}
+  .ripperdeath.show{display:block}
+  .ripperdeath .sweep{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(40,0,8,.78) 55%,rgba(92,4,14,.95));animation:ripsweep .45s ease-out}
+  @keyframes ripsweep{0%{transform:translateX(100%)}100%{transform:translateX(0)}}
+  .ripperdeath .reap{position:absolute;right:9%;top:24%;image-rendering:pixelated;filter:drop-shadow(0 0 18px #c23644);animation:reapin .55s cubic-bezier(.2,1.3,.5,1)}
+  @keyframes reapin{0%{transform:translateX(150px) scale(.4);opacity:0}100%{transform:translateX(0) scale(1);opacity:1}}
+  .ripperdeath .rtxt{position:absolute;left:44%;top:46%;transform:translate(-50%,-50%);font-family:'Press Start 2P',monospace;font-size:13px;line-height:1.7;color:#ff3b5c;text-shadow:2px 2px 0 #000;text-align:center;animation:apulse .4s infinite alternate}
   .actor{position:absolute;bottom:42px;display:flex;flex-direction:column;align-items:center;gap:5px;transition:transform .07s}
   .actor.hero{left:11%}.actor.mob{right:11%}
   .sprite{image-rendering:pixelated;filter:drop-shadow(0 4px 3px rgba(0,0,0,.7))}
@@ -109,12 +116,13 @@
   <div class="stage" id="stage">
     <div class="bg" id="bg"></div><div class="floor"></div><div class="vign"></div>
     <div class="topinfo"><span id="depth">DEPTH 0/9</span><span id="statetext">LOADING…</span></div>
-    <div class="ripwrap" id="ripwrap"><div class="riplab"><span>☠ THE RIPPER CLOSES IN</span><b id="rippct">0%</b></div><div class="ripbar"><i id="ripbar"></i><div class="ripskull" id="ripskull">☠</div></div></div>
+    <div class="ripwrap" id="ripwrap"><div class="riplab"><span>☠ REAPER STRIKE RISK</span><b id="rippct">0%</b></div><div class="ripbar"><i id="ripbar"></i><div class="ripskull" id="ripskull">☠</div></div></div>
     <div class="actor hero" id="hero"><div class="hpbar hero" id="heroHp"><i style="width:100%"></i></div><canvas class="sprite" id="heroC"></canvas></div>
     <div class="actor mob" id="mob" style="display:none"><div class="mobname" id="mobname">GRUB</div><div class="hpbar mob" id="mobHp"><i style="width:100%"></i></div><canvas class="sprite" id="mobC"></canvas></div>
     <div class="chest" id="chest" style="display:none"><div class="glow" id="chestGlow"></div><div class="lid"></div><div class="box"></div><div class="band"></div><div class="lock"></div></div>
     <div class="dmglayer" id="dmglayer"></div><div class="flarelayer" id="flarelayer"></div>
     <div class="announce" id="announce"><div class="big" id="annbig"></div><div class="cd" id="anncd"></div></div>
+    <div class="ripperdeath" id="ripperdeath"><div class="sweep"></div><canvas class="reap" id="reapC"></canvas><div class="rtxt">THE RIPPER<br>CAUGHT YOU!</div></div>
   </div>
   <div class="controls">
     <div class="stakebar"><input id="stake" type="number" value="100" min="1"><div class="q"><b data-op="x2">2×</b><b data-op="half">½</b><b data-op="max">MAX</b></div></div>
@@ -136,6 +144,7 @@
    R:["       "," fffff "," fdfdf ","fffffff","fdfffdf","fffffff"," ff ff "],
    E:["  wwww "," wWWWWw","wWkWWkW","wWWWWWW","wWWWWWW"," wWWWw "," wW Ww ","w w w w"],
    B:[" oooooo","ooOUUOo","oOkUkOo","ooOUUOo","okUUUko","ooooooo","OO  OO ","O    O "],
+   ripper:["  kkkk  "," kKKKKk "," kKKKKKk","kKRKKRKk","kKKKKKKk","kKKKKKKk","KKKKKKKK","KKKKKKKK"," KK  KK "," kK  Kk "],
  };
  const LOOT={
    weapon:["    ii","   iIi","  iIi ","  B   "," B    "," B    ","B     "],
@@ -193,7 +202,7 @@
    else{DC.beep(430,.09,"square",.07);setTimeout(()=>DC.beep(650,.06),55);}});
  DC.on("fight",f=>{$("chest").style.display="none";const m=$("mob");m.style.display="flex";px($("mobC"),SPR[f.type],f.type==="B"?10:7);$("mobname").textContent=MOBNAME[f.type];
    m.animate([{transform:"translateX(50px)",opacity:0},{transform:"translateX(0)",opacity:1}],{duration:220});});
- DC.on("travel",()=>{$("mob").style.display="none";$("chest").style.display="none";$("announce").classList.remove("show");drawHero(ST().gear);});
+ DC.on("travel",()=>{$("mob").style.display="none";$("chest").style.display="none";$("announce").classList.remove("show");$("ripperdeath").classList.remove("show");drawHero(ST().gear);});
  DC.on("idle",()=>drawHero(ST().gear));
  DC.on("betsopen",()=>{const a=$("announce");a.className="announce show open";$("annbig").textContent="CHEST BETS OPEN!";DC.beep(300,.06);setTimeout(()=>DC.beep(420,.08),90);});
  DC.on("betsclosed",()=>{const a=$("announce");a.className="announce show closed";$("annbig").textContent="BETS CLOSED";$("anncd").textContent="";DC.beep(200,.14,"sawtooth");setTimeout(()=>{if($("announce").classList.contains("closed"))$("announce").classList.remove("show");},700);});
@@ -226,14 +235,17 @@
      fl.textContent=(e.bet.won?"CHEST BET WON +":"CHEST BET −")+Math.round(e.bet.amount);
      fl.style.left=(cr.left-sr.left+cr.width/2)+"px";fl.style.top=(cr.top-sr.top-42)+"px";$("flarelayer").appendChild(fl);setTimeout(()=>fl.remove(),1400);
      if(e.bet.won){DC.beep(760,.08);setTimeout(()=>DC.beep(1140,.1),80);}}});
- DC.on("end",r=>{if(r.outcome==="combat"||r.outcome==="ripper")px($("heroC"),LOOT.empty,7);});
+ DC.on("end",r=>{if(r.outcome==="combat"||r.outcome==="ripper")px($("heroC"),LOOT.empty,7);
+   if(r.outcome==="ripper"){ px($("reapC"),SPR.ripper,10); $("ripperdeath").classList.add("show");
+     DC.beep(130,.35,"sawtooth",.1);setTimeout(()=>DC.beep(85,.3,"sawtooth",.08),160);setTimeout(()=>DC.beep(200,.45,"sawtooth",.07),340);
+     setTimeout(()=>$("ripperdeath").classList.remove("show"),2600); }});
  // render loop
  let bgx=0;
  function frame(){const st=ST();
    bgx-=st.phase==="travel"?3:0.4;$("bg").style.backgroundPositionX=bgx+"px";
    if(st.phase!=="end"){const m=$("mult");m.className="mult"+(st.cashed?" win":"");m.textContent=fx(st.mult);}
    $("depth").textContent="DEPTH "+st.depth+"/"+DC.ORDER.length;$("statetext").textContent=st.stateText||"";
-   $("rippct").textContent=(st.ripper*100|0)+"%";$("ripbar").style.width=(st.ripper*100)+"%";$("ripskull").style.left=(st.ripper*100)+"%";$("ripwrap").classList.toggle("danger",st.ripper>0.45);
+   {const rk=st.ripper, bar=rk*100;$("rippct").textContent=(rk*100|0)+"%";$("ripbar").style.width=bar+"%";$("ripskull").style.left=bar+"%";$("ripwrap").classList.toggle("danger",rk>0.18);}
    const hf=st.hp/DC.maxHp;$("heroHp").firstElementChild.style.width=(hf*100)+"%";$("heroHp").classList.toggle("lo",hf<=0.35);
    if(st.enemy&&st.phase==="fight"){$("mobHp").firstElementChild.style.width=(st.enemyHpFrac*100)+"%";$("mobHp").classList.toggle("lo",st.enemyHpFrac<=0.35);}
    // chest bet UI ALWAYS visible — grey + status when not betting

@@ -8,7 +8,8 @@
                 E:{name:"Wraith",hp:3,dmg:3,prec:0.66,col:"#8fa0c0"},
                 B:{name:"Boss",hp:7,dmg:6,prec:0.60,col:"#c23644"} };
   const HERO0={hp:10,maxhp:10,dmg:1,prec:0.82};
-  const RIP_BASE=0.020,RIP_RAMP=0.022,MAXX=120,HEAL_AMT=5,POT_MAX=5;
+  // Reaper strike risk per descent, shown HONESTLY on the bar and rising as you go deeper (a visible, informed gamble).
+  const RIP_BASE=0.020,RIP_RAMP=0.022,MAXX=100,HEAL_AMT=5,POT_MAX=5;
   // defense: BLOCK (parry) 20% base, +20% with shield = 40%. DODGE 20% base, +20% with Ring of Dodging = 40%.
   const DODGE_BASE=0.20,DODGE_RING=0.20,BLOCK_BASE=0.20,BLOCK_SHIELD=0.20;
   const ITEMS={ weapon:{icon:"🪓",name:"War Axe"},shield:{icon:"🛡️",name:"Tower Shield"},
@@ -59,12 +60,12 @@
   function newGear(){return{weapon:false,shield:false,ringdodge:false,potions:0};}
   function simulate(rng){const g=newGear();let hp=HERO0.hp;const beats=[];let cleared=0,outcome=null,artDepth=0;
     for(let d=0;d<ORDER.length;d++){
-      // the Ripper closes in DURING the descent — every depth carries real risk (this is what makes the ride climb)
-      const pc=Math.max(0,RIP_BASE+RIP_RAMP*d); if(rng()<pc){outcome="ripper";beats.push({depth:d+1,travelDeath:true});break;}
+      const h=Math.max(0,RIP_BASE+RIP_RAMP*d);      // Reaper strike risk THIS descent (shown on the bar, rises with depth)
+      if(rng()<h){outcome="ripper";beats.push({depth:d+1,travelDeath:true,rip:h});break;}
       const chest=chestRoll(rng,g);
-      if(chest.kind==="artefact"){outcome="artefact";artDepth=d+1;beats.push({depth:d+1,chest,gear:{...g},hp});break;}
+      if(chest.kind==="artefact"){outcome="artefact";artDepth=d+1;beats.push({depth:d+1,chest,gear:{...g},hp,rip:h});break;}
       if(chest.kind==="upgrade")g[chest.item]=true; else if(chest.kind==="heal"){g.potions++;hp=Math.min(HERO0.maxhp,hp+HEAL_AMT);}
-      const type=ORDER[d];const res=fight(rng,hp,g,type);const beat={depth:d+1,type,chest,win:res.win,hpBefore:hp,hpAfter:res.hp,gear:{...g},log:res.log};hp=res.hp;
+      const type=ORDER[d];const res=fight(rng,hp,g,type);const beat={depth:d+1,type,chest,win:res.win,hpBefore:hp,hpAfter:res.hp,gear:{...g},log:res.log,rip:h};hp=res.hp;
       if(!res.win){outcome="combat";beats.push(beat);break;} cleared++; beats.push(beat); }
     if(!outcome)outcome="escape"; return{beats,cleared,outcome,gotArtefact:outcome==="artefact",artDepth}; }
 
@@ -107,7 +108,7 @@
       const self=this,run=this._run,s=this.state,g=newGear();let clearedMult=1;
       for(const b of run.beats){ s.depth=b.depth;
         s.phase="travel";s.enemy=null;s.chestOpen=false;s.stateText="DESCENDING…";
-        s.ripper=Math.min(0.96,(b.depth-1)/ORDER.length+0.05);
+        s.ripper=Math.min(1, b.rip!=null?b.rip:s.ripper);   // truthful doom-meter
         self._emit("travel",{depth:b.depth});await sleep(950);
         if(b.travelDeath){ s.ripper=1;s.stateText="THE RIPPER CAUGHT YOU"; return self._end("ripper",clearedMult); }
         s.phase="bet";s.enemy=null;s.gear={...g};s.chestOptions=this._optsFor(g);this._chestPick=null;
@@ -141,7 +142,7 @@
           if(p<1)requestAnimationFrame(fr);else res();})();});
         s.hp=b.hpAfter;s.enemyHp=b.win?0:s.enemyHp;s.enemyHpFrac=s.enemyHp/s.enemyMaxHp;
         if(!b.win)return this._end(b.ripper?"ripper":"combat",clearedMult);
-        clearedMult=LADDER[b.depth];if(!s.cashed)s.mult=clearedMult;s.ripper=Math.min(0.95,b.depth/ORDER.length*0.8);
+        clearedMult=LADDER[b.depth];if(!s.cashed)s.mult=clearedMult;
         this._emit("survive",{depth:b.depth,mult:clearedMult});beep(700+b.depth*40,.06);await sleep(850);
         if(b.ripper)return this._end("ripper",clearedMult);
       }
