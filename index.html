@@ -35,6 +35,14 @@
   .hero.equip canvas{animation:equipf .55s}
   @keyframes equipf{0%{filter:brightness(3.2) drop-shadow(0 0 12px #fff)}100%{filter:none}}
   .equiplabel{position:absolute;font-family:'Press Start 2P',monospace;font-size:8px;color:var(--leg);text-shadow:1px 1px 0 #000;animation:dfly 1.2s ease-out forwards;z-index:8}
+  .defend{position:absolute;font-family:'Press Start 2P',monospace;font-size:14px;transform:translate(-50%,-50%);pointer-events:none;z-index:9;text-shadow:2px 2px 0 #000;animation:defpop .86s ease-out forwards}
+  .defend.dodge{color:#46d6ff;filter:drop-shadow(0 0 12px #46d6ff)}
+  .defend.block{color:#cfd8e6;filter:drop-shadow(0 0 12px #8a94a2)}
+  @keyframes defpop{0%{transform:translate(-50%,-30%) scale(.3);opacity:0}22%{transform:translate(-50%,-85%) scale(1.45);opacity:1}100%{transform:translate(-50%,-175%) scale(1);opacity:0}}
+  .hero.defended canvas{animation:dfl .3s}
+  @keyframes dfl{0%{filter:brightness(2.7) drop-shadow(0 0 14px #46d6ff)}100%{filter:none}}
+  .defring{position:absolute;pointer-events:none;z-index:8;border-radius:50%;animation:defr .45s ease-out forwards}
+  @keyframes defr{0%{opacity:.9;transform:translate(-50%,-50%) scale(.3)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.9)}}
   .actor{position:absolute;bottom:42px;display:flex;flex-direction:column;align-items:center;gap:5px;transition:transform .07s}
   .actor.hero{left:11%}.actor.mob{right:11%}
   .sprite{image-rendering:pixelated;filter:drop-shadow(0 4px 3px rgba(0,0,0,.7))}
@@ -141,17 +149,16 @@
  function px(cv,rows,scale){const w=Math.max(...rows.map(r=>r.length)),h=rows.length;cv.width=w*scale;cv.height=h*scale;
    const x=cv.getContext("2d");x.clearRect(0,0,cv.width,cv.height);
    for(let r=0;r<h;r++)for(let c=0;c<rows[r].length;c++){const col=PAL[rows[r][c]];if(!col)continue;x.fillStyle=col;x.fillRect(c*scale,r*scale,scale,scale);}}
- function lootSprite(kind,item){if(kind==="artefact")return LOOT.artefact;if(kind==="upgrade")return LOOT[item]||LOOT.weapon;
+ function lootSprite(kind,item){if(kind==="artefact")return LOOT.artefact;
+   if(kind==="upgrade")return item==="ringdodge"?LOOT.ring:(LOOT[item]||LOOT.weapon);
    if(kind==="heal")return LOOT.potion;return LOOT.empty;}
  // hero composited with gear — each upgrade visibly applied
  function drawHero(gear){const cv=$("heroC"),sc=7,rows=SPR.hero,h=rows.length,offX=2*sc;
    cv.width=11*sc;cv.height=h*sc;const x=cv.getContext("2d");x.clearRect(0,0,cv.width,cv.height);
-   const col=ch=>{if(gear.armour){if(ch==="c")return"#44424e";if(ch==="C")return"#64606e";}return PAL[ch];};
-   for(let r=0;r<h;r++)for(let c=0;c<rows[r].length;c++){const cc=col(rows[r][c]);if(!cc)continue;x.fillStyle=cc;x.fillRect(offX+c*sc,r*sc,sc,sc);}
+   for(let r=0;r<h;r++)for(let c=0;c<rows[r].length;c++){const cc=PAL[rows[r][c]];if(!cc)continue;x.fillStyle=cc;x.fillRect(offX+c*sc,r*sc,sc,sc);}
    if(gear.weapon){const wx=offX+6*sc;x.fillStyle="#5a3f24";x.fillRect(wx,5*sc,sc,5*sc);x.fillStyle="#aeb6c2";x.fillRect(wx-sc,3*sc,2*sc,3*sc);x.fillStyle="#7e8694";x.fillRect(wx+sc,4*sc,sc,2*sc);}
    if(gear.shield){x.fillStyle="#5e6774";x.fillRect(sc,5*sc,2*sc,4*sc);x.fillStyle="#8a94a2";x.fillRect(sc,6*sc,sc,2*sc);}
-   if(gear.ring){x.fillStyle="#e6c24a";x.fillRect(offX+2*sc,7*sc,sc,sc);}
-   if(gear.amulet){x.fillStyle="#7a5ab0";x.fillRect(offX+4*sc,6*sc,sc,sc);}}
+   if(gear.ringdodge){x.fillStyle="#46d6ff";x.fillRect(offX+2*sc,7*sc,sc,sc);x.fillStyle="#9fe8ff";x.fillRect(offX+3*sc,7*sc,sc,sc);}}
  drawHero(DC.state.gear);
  // ---- helpers ----
  const setBal=b=>$("bal").textContent=Math.round(b).toLocaleString();
@@ -171,6 +178,15 @@
    if(h.who==="hero"){lunge(hero,1);mc.classList.remove("flinch");void mc.offsetWidth;mc.classList.add("flinch");dmg(mob,"-"+h.dmg,"#c23644");DC.beep(260,.04,"square",.04);}
    else{lunge(mob,-1);hc.classList.remove("flinch");void hc.offsetWidth;hc.classList.add("flinch");dmg(hero,"-"+h.dmg,"#c23644");DC.beep(170,.05,"sawtooth",.05);}
    if(h.refl)dmg(mob,"-"+h.dmg,"#7a5ab0");});
+ DC.on("defend",d=>{const mob=$("mob"),hero=$("hero"),hr=hero.getBoundingClientRect(),sr=$("stage").getBoundingClientRect();
+   if(mob.style.display!=="none")lunge(mob,-1);                       // enemy swung...
+   const cx=hr.left-sr.left+hr.width/2, cy=hr.top-sr.top+hr.height/2, col=d.kind==="dodge"?"#46d6ff":"#cfd8e6";
+   const rg=document.createElement("div");rg.className="defring";rg.style.left=cx+"px";rg.style.top=cy+"px";rg.style.width="48px";rg.style.height="48px";rg.style.border="3px solid "+col;$("dmglayer").appendChild(rg);setTimeout(()=>rg.remove(),470);
+   const el=document.createElement("div");el.className="defend "+d.kind;el.textContent=d.kind==="dodge"?"DODGE!":"BLOCK!";
+   el.style.left=cx+"px";el.style.top=(hr.top-sr.top+10)+"px";$("dmglayer").appendChild(el);setTimeout(()=>el.remove(),870);
+   hero.classList.remove("defended");void hero.offsetWidth;hero.classList.add("defended");
+   if(d.kind==="dodge"){DC.beep(880,.07,"square",.06);setTimeout(()=>DC.beep(1250,.08),55);}
+   else{DC.beep(430,.09,"square",.07);setTimeout(()=>DC.beep(650,.06),55);}});
  DC.on("fight",f=>{$("chest").style.display="none";const m=$("mob");m.style.display="flex";px($("mobC"),SPR[f.type],f.type==="B"?10:7);$("mobname").textContent=MOBNAME[f.type];
    m.animate([{transform:"translateX(50px)",opacity:0},{transform:"translateX(0)",opacity:1}],{duration:220});});
  DC.on("travel",()=>{$("mob").style.display="none";$("chest").style.display="none";$("announce").classList.remove("show");drawHero(ST().gear);});

@@ -8,10 +8,12 @@
                 E:{name:"Wraith",hp:3,dmg:3,prec:0.66,col:"#8fa0c0"},
                 B:{name:"Boss",hp:7,dmg:6,prec:0.60,col:"#c23644"} };
   const HERO0={hp:10,maxhp:10,dmg:1,prec:0.82};
-  const RIP_BASE=0.070,RIP_RAMP=0.120,DODGE=0.25,DEFLECT=0.20,MAXX=60,HEAL_AMT=5,POT_MAX=5;
-  const ITEMS={ weapon:{icon:"🪓",name:"War Axe"},shield:{icon:"🛡️",name:"Tower Shield"},armour:{icon:"🥋",name:"Deflection Plate"},
-    ring:{icon:"💍",name:"Ring of Power"},amulet:{icon:"📿",name:"Amulet of Dodging"},potion:{icon:"⚗️",name:"Potion"} };
-  const ITEM_RARITY={weapon:"uncommon",shield:"rare",armour:"epic",ring:"rare",amulet:"epic",potion:"rare"};
+  const RIP_BASE=0.070,RIP_RAMP=0.120,MAXX=60,HEAL_AMT=5,POT_MAX=5;
+  // defense: BLOCK (parry) 20% base, +20% with shield = 40%. DODGE 20% base, +20% with Ring of Dodging = 40%.
+  const DODGE_BASE=0.20,DODGE_RING=0.20,BLOCK_BASE=0.20,BLOCK_SHIELD=0.20;
+  const ITEMS={ weapon:{icon:"🪓",name:"War Axe"},shield:{icon:"🛡️",name:"Tower Shield"},
+    ringdodge:{icon:"💍",name:"Ring of Dodging"},potion:{icon:"⚗️",name:"Potion"} };
+  const ITEM_RARITY={weapon:"uncommon",shield:"rare",ringdodge:"epic",potion:"rare"};
   const RARITY={ common:{lab:"COMMON",col:"#6a6458",wow:0},uncommon:{lab:"UNCOMMON",col:"#5f8046",wow:1},
     rare:{lab:"RARE",col:"#5a7a9a",wow:1},epic:{lab:"EPIC",col:"#7a5ab0",wow:2},legendary:{lab:"LEGENDARY",col:"#c8a030",wow:3} };
   function lootOf(c){ if(c.kind==="artefact")return{icon:"💎",name:"The Artefact",rar:"legendary",item:"artefact"};
@@ -24,11 +26,9 @@
   // potions: like gear, each one rarer, 5 total. ring/amulet: rare, -50% once one looted.
   function chestOdds(g){
     const o={artefact:0.007};
-    if(!g.weapon) o.weapon=0.34; else if(!g.shield) o.shield=0.17; else if(!g.armour) o.armour=0.075;
-    const PT=[0.30,0.19,0.11,0.06,0.03]; if(g.potions<POT_MAX) o.potion=PT[g.potions];
-    const oneRA=g.ring||g.amulet;
-    if(!g.ring) o.ring=oneRA?0.045:0.09;
-    if(!g.amulet) o.amulet=oneRA?0.045:0.09;
+    // gear ladder, each rarer than the last: Axe -> Shield -> Ring of Dodging
+    if(!g.weapon) o.weapon=0.42; else if(!g.shield) o.shield=0.22; else if(!g.ringdodge) o.ringdodge=0.12;
+    const PT=[0.34,0.22,0.13,0.07,0.04]; if(g.potions<POT_MAX) o.potion=PT[g.potions];
     let sum=0; for(const k in o) sum+=o[k]; o.empty=Math.max(0,1-sum);
     return o;
   }
@@ -37,26 +37,26 @@
     const seq=[["artefact","artefact",o.artefact]];
     if(o.weapon)seq.push(["upgrade","weapon",o.weapon]);
     if(o.shield)seq.push(["upgrade","shield",o.shield]);
-    if(o.armour)seq.push(["upgrade","armour",o.armour]);
+    if(o.ringdodge)seq.push(["upgrade","ringdodge",o.ringdodge]);
     if(o.potion)seq.push(["heal","potion",o.potion]);
-    if(o.ring)seq.push(["upgrade","ring",o.ring]);
-    if(o.amulet)seq.push(["upgrade","amulet",o.amulet]);
     for(const [kind,item,p] of seq){ if(r<p) return {kind,item}; r-=p; }
     return {kind:"empty",item:null};
   }
   function chestProbs(g){ const o=chestOdds(g);
-    return {artefact:o.artefact, upgrade:(o.weapon||0)+(o.shield||0)+(o.armour||0)+(o.ring||0)+(o.amulet||0), heal:o.potion||0, empty:o.empty}; }
+    return {artefact:o.artefact, upgrade:(o.weapon||0)+(o.shield||0)+(o.ringdodge||0), heal:o.potion||0, empty:o.empty}; }
 
   function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
   function cyrb(s){let h=1779033703^s.length;for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19;}return(h^h>>>16)>>>0;}
-  function heroDmg(g){let d=HERO0.dmg;if(g.weapon)d*=2;if(g.ring)d+=1;return d;}
+  function heroDmg(g){let d=HERO0.dmg;if(g.weapon)d*=2;return d;}
   function fight(rng,hp,g,type){const e=ENEMY[type];let ehp=e.hp;const hd=heroDmg(g);let sw=0;const log=[];
+    const dodge=DODGE_BASE+(g.ringdodge?DODGE_RING:0), block=BLOCK_BASE+(g.shield?BLOCK_SHIELD:0);
     while(true){ if(rng()<HERO0.prec){ehp-=hd;log.push({who:"hero",dmg:hd,ehp,hp});if(ehp<=0)return{win:true,hp,log};} sw++;
-      if(rng()<e.prec){ if(!(g.amulet&&rng()<DODGE)){ let dmg=e.dmg;if(g.shield)dmg=Math.max(1,Math.floor(dmg/2)); hp-=dmg; let refl=false;
-        if(g.armour&&rng()<DEFLECT){ehp-=e.dmg;refl=true;} log.push({who:"enemy",dmg,ehp,hp,refl});
-        if(refl&&ehp<=0)return{win:true,hp,log}; if(hp<=0)return{win:false,hp:0,log}; } }
+      if(rng()<e.prec){                                   // enemy swing lands unless dodged or blocked
+        if(rng()<dodge){ log.push({who:"enemy",defend:"dodge",ehp,hp}); }
+        else if(rng()<block){ log.push({who:"enemy",defend:"block",ehp,hp}); }
+        else { hp-=e.dmg; log.push({who:"enemy",dmg:e.dmg,ehp,hp}); if(hp<=0)return{win:false,hp:0,log}; } }
       if(sw>80)return{win:true,hp,log}; } }
-  function newGear(){return{weapon:false,shield:false,armour:false,ring:false,amulet:false,potions:0};}
+  function newGear(){return{weapon:false,shield:false,ringdodge:false,potions:0};}
   function simulate(rng){const g=newGear();let hp=HERO0.hp;const beats=[];let cleared=0,outcome=null,artDepth=0;
     for(let d=0;d<ORDER.length;d++){
       // the Ripper closes in DURING the descent — every depth carries real risk (this is what makes the ride climb)
@@ -135,7 +135,9 @@
         await new Promise(res=>{(function fr(){const p=Math.min(1,(performance.now()-t0)/dur);
           if(!s.cashed)s.mult=from+(target-from)*p;
           const want=Math.floor(p*log.length);
-          while(li<want){const e=log[li++];s.enemyHp=Math.max(0,e.ehp);if(e.who==="enemy")s.hp=Math.max(0,e.hp);s.enemyHpFrac=s.enemyHp/s.enemyMaxHp;self._emit("hit",{who:e.who,dmg:e.dmg,refl:e.refl});}
+          while(li<want){const e=log[li++];s.enemyHp=Math.max(0,e.ehp);s.enemyHpFrac=s.enemyHp/s.enemyMaxHp;
+            if(e.defend){self._emit("defend",{kind:e.defend});}
+            else{if(e.who==="enemy")s.hp=Math.max(0,e.hp);self._emit("hit",{who:e.who,dmg:e.dmg});}}
           if(p<1)requestAnimationFrame(fr);else res();})();});
         s.hp=b.hpAfter;s.enemyHp=b.win?0:s.enemyHp;s.enemyHpFrac=s.enemyHp/s.enemyMaxHp;
         if(!b.win)return this._end(b.ripper?"ripper":"combat",clearedMult);
