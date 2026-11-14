@@ -26,7 +26,7 @@
   // artefact: extremely rare. weapon->shield->armour: common but each rarer (all 3 ~ artefact-rare).
   // potions: like gear, each one rarer, 5 total. ring/amulet: rare, -50% once one looted.
   function chestOdds(g){
-    const o={artefact:0.004};   // extremely rare jackpot (15 chests/run ⇒ ~2.6%/run)
+    const o={artefact:0.004};   // rare jackpot; with 20 events (more chests reached) ⇒ ~4.7%/run
     // gear ladder, each rarer than the last: Axe -> Shield -> Ring of Dodging
     if(!g.weapon) o.weapon=0.42; else if(!g.shield) o.shield=0.22; else if(!g.ringdodge) o.ringdodge=0.12;
     const PT=[0.34,0.22,0.13,0.07,0.04]; if(g.potions<POT_MAX) o.potion=PT[g.potions];
